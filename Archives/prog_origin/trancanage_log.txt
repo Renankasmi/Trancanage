@@ -1,0 +1,20 @@
+Connecting to MPLAB ICD 2
+...Connected
+Setting Vdd source to target
+Target Device dsPIC30F3010 found, revision = Rev 0x1002
+...Reading ICD Product ID
+Running ICD Self Test
+...Passed
+MPLAB ICD 2 ready for next operation
+Reading...
+ICDWarn0038:  When using auto-calculate write range, reads cover the entire memory range. Do you wish to continue?
+...EEPROM
+...Program Memory (0x0 - 0x3FFF)
+.. Config Memory
+...User ID Memory
+...Read Succeeded
+MPLAB ICD 2 ready for next operation
+Reading...
+...EEPROM
+...Read Succeeded
+MPLAB ICD 2 ready for next operation
