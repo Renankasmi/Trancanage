@@ -1,0 +1,1555 @@
+unit trancannage_PC_6;
+
+// /trancannage_pc_3 : on reçoit toutes les données
+// on n'afffiche que certaines , suivant l'onglet.
+// fonctionne avec le circuit définitif
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, Grids, StdCtrls, Menus, ComCtrls, StrUtils, Gauges,
+  Spin, Math;
+
+type
+  TForm1 = class(TForm)
+    StringGrid1: TStringGrid;
+    Timer_loop: TTimer;
+    Timer_start: TTimer;
+    TabControl1: TTabControl;
+    connect: TButton;
+    cb_port: TComboBox;
+    rg_lin: TRadioGroup;
+    prog_eep: TButton;
+    Memo1: TMemo;
+    tb_k1: TTrackBar;
+    lb_k1: TLabel;
+    tb_k2: TTrackBar;
+    tb_k3: TTrackBar;
+    tb_k4: TTrackBar;
+    lb_k2: TLabel;
+    lb_k3: TLabel;
+    lb_k4: TLabel;
+    btn_neutre: TButton;
+    btn_store_offset: TButton;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    btn_inc_consigne: TButton;
+    max_tk1: TSpinEdit;
+    max_tk2: TSpinEdit;
+    max_tk3: TSpinEdit;
+    max_tk4: TSpinEdit;
+    OpenDialog1: TOpenDialog;
+    SaveDialog1: TSaveDialog;
+    aff_curve1: TButton;
+    aff_curve2: TButton;
+    cb1: TCheckBox;
+    cb2: TCheckBox;
+    cb3: TCheckBox;
+    cb4: TCheckBox;
+    cb5: TCheckBox;
+    btn_limite: TButton;
+    cb6: TCheckBox;
+    cb7: TCheckBox;
+    cb8: TCheckBox;
+    cb9: TCheckBox;
+    cb10: TCheckBox;
+    aff_curve3: TButton;
+    memo_curve1: TButton;
+    memo_curve2: TButton;
+    memo_curve3: TButton;
+    LOG: TButton;
+    cb_select: TCheckBox;
+    btn_sel: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure Timer_loopTimer(Sender: TObject);
+    procedure Timer_startTimer(Sender: TObject);
+    procedure connectClick(Sender: TObject);
+    procedure TabControl1Change(Sender: TObject);
+    procedure prog_eepClick(Sender: TObject);
+    procedure affiche_eeprom(Sender: TObject);
+    procedure init_grid(Sender: TObject);
+    procedure init_tracks(Sender: TObject);
+    procedure tb_k1Change(Sender: TObject);
+    procedure tb_k2Change(Sender: TObject);
+    procedure tb_k3Change(Sender: TObject);
+    procedure tb_k4Change(Sender: TObject);
+    procedure btn_store_offsetClick(Sender: TObject);
+    procedure max_tk1Change(Sender: TObject);
+    procedure max_tk2Change(Sender: TObject);
+    procedure max_tk3Change(Sender: TObject);
+    procedure aff_curve1Click(Sender: TObject);
+    procedure aff_curve2Click(Sender: TObject);
+    procedure btn_neutreClick(Sender: TObject);
+    procedure rg_linClick(Sender: TObject);
+    procedure btn_inc_consigneClick(Sender: TObject);
+    procedure btn_limiteClick(Sender: TObject);
+    procedure aff_curve3Click(Sender: TObject);
+    procedure memo_curve1Click(Sender: TObject);
+    procedure memo_curve2Click(Sender: TObject);
+    procedure memo_curve3Click(Sender: TObject);
+    procedure LOGClick(Sender: TObject);
+    procedure btn_selClick(Sender: TObject);
+  private
+    { Déclarations privées }
+  public
+    { Déclarations publiques }
+  end;
+
+//{$DEFINE DEBUG}
+
+
+type
+  TDataRec = record
+    nb_data: Integer;
+    data_size,data_type : array[0..9] of integer;
+                   //0 pour entier non signé
+                   //1 pour entier signé
+                   //2 pour float ieee
+                   //3 pour float microchip
+                   //4 pour calcul particulier
+                   //5 pour affichage hexa
+                   //6 calcul courant
+                   //7 calcul tension
+                   //8 vérif si >10000 , càd selected
+    data_text: array[0..9] of string;
+    data_curve: array[0..9] of Tcolor;
+    data_scale : array[0..9] of real;
+    data_zero : array[0..9] of integer;
+  end;
+  TConfig = record
+        version : integer;
+        flags : integer;
+	offset_as5040 : integer;
+	volts_manuel : integer;
+	largeur_bobine : integer;
+	freq_boucle : integer;
+	idata1 : integer;
+	Kp_I : integer;
+	Ki_I : integer;
+	I_lim : integer;
+	vit_simu_bobine : integer;
+	idata6 : integer;
+	idata7 : integer;
+	idata8 : integer;
+	idata9 : integer;
+	idata10 : integer;
+    //int d'abord , float après
+	Kp : single;
+	Ki : single;
+	Kd : single;
+	pas : single;
+        fdata1 : single;
+        fdata2 : single;
+        fdata3 : single;
+        fdata4 : single;
+        fdata5 : single;
+        fdata6 : single;
+        fdata7 : single;
+        fdata8 : single;
+        fdata9 : single;
+        fdata10 : single;
+  end;
+
+var
+  Form1: TForm1;
+  cmpt_ic : integer;
+  cmpt_rx: integer;
+  temp_dat: int64;//64bits signé
+  reel : single; //float sur 4 octets
+  ptr_i : ^byte;
+  ptr_long : ^longword;
+  ptr_r : ^single;
+  pdata : ^TDataRec;
+  buffer_rx : array[0..100] of integer;
+//  nb_total : integer;
+  flag_efface_curve : boolean;
+  cmpt_pixel : integer;
+  old_data : array[0..100] of integer;
+  no_comm,connected : boolean ;
+  port : integer;
+  Datas : TDataRec;
+  eepr : TConfig;
+  cmpt_timer : integer;
+  modif_controls : boolean;
+  old_max_tkx_value : array[0..3] of integer;
+  g : textfile;
+  cmpt_pointer : boolean;
+  ordo,old_ordo : integer;
+  state_calibr_acc : byte;
+  tab_coche1,tab_coche2,tab_coche3 : array[1..10] of integer;
+  simu_vitesse_bobine : integer;
+  old_tab : integer;
+    f : textfile;
+  log_running : boolean;
+  chaine_fic : string;
+const
+  mid = 300; //v1.Top+v1.Height div 2;
+  bot = mid+190;
+  topf = mid-190;
+
+  nb_total =23; //3 header  + 8*2 + 1*4 = 23
+
+  data_all : TDataRec=(nb_data:9;data_size:(2,4,2,2,2,2,2,2,2,0);
+    data_type:(8,4,0,0,6,7,1,0,0,0);
+    data_text:('tours_bob','vitesse_bob','consigne','pos_as5040','courant','tension','Ep0','Epu','charge µc','');
+    data_curve:(clBlack,clBlue,clRed,clGreen,clLime,clGray,clYellow,clMaroon,clPurple,clNone);
+    data_scale:(4,4,4,4,30,2,4,1,8,0);data_zero:(bot,bot,bot,bot,bot,bot,mid,bot,bot,0); );
+
+{  data_1 : TDataRec=(nb_data:5;data_size:(2,4,2,2,2,0,0,0);
+    data_type:(0,4,6,0,7,0,0,0);data_text:('tours_bob','vitesse_bob','courant','pos_as5040','tension','','','');
+    data_curve:(clBlack,clBlue,clRed,clGreen,clNone,clNone,clNone,clNone);
+    data_scale:(4,4,30,4,0,0,0,0);data_zero:(bot,bot,bot,bot,0,0,0,0); );
+  data_2 : TDataRec=(nb_data:6;data_size:(2,2,2,2,2,2,0,0);
+    data_type:(0,1,0,0,0,0,0,0);data_text:('tours_bob','Ep0','Epu','consigne','pos_as5040','charge µc','','');
+    data_curve:(clBlack,clBlue,clRed,clGreen,clLime,clNone,clNone,clNone);
+    data_scale:(4,4,4,4,4,0,0,0);data_zero:(bot,mid,bot,bot,bot,0,0,0); );
+  data_3 : TDataRec=(nb_data:3;data_size:(2,2,2,0,0,0,0,0);
+    data_type:(6,0,7,0,0,0,0,0);data_text:('courant','Epu','tension','','','','','');
+    data_curve:(clBlack,clBlue,clRed,clNone,clNone,clNone,clNone,clNone);
+    data_scale:(30,4,4,0,0,0,0,0);data_zero:(bot,bot,bot,0,0,0,0,0); );
+ }
+
+    COMMAND_BASCULE_IC_BOBINE=48;
+
+    COMMAND_VISU_DATA_1=1;
+    COMMAND_STORE_OFFS=2;
+    COMMAND_WRITE_EEP=3;
+    COMMAND_RESET=4;
+    COMMAND_CHANGE_FREQ_BOUCLE=5;
+    COMMAND_VISU_DATA_2=6;
+    COMMAND_NEUTRE=7;
+    COMMAND_INC_CONSIGNE=8;
+    COMMAND_GOTO=9;
+    COMMAND_SEND_EEP=10;
+    COMMAND_LIMITE=11;
+    COMMAND_ENABLE=12;
+    COMMAND_DISABLE=13;
+    COMMAND_VISU_DATA_3=14;
+    COMMAND_VISU_LOG=15;
+    COMMAND_STOP=16;
+    COMMAND_RUN=17;
+
+
+{
+    COMMAND_VISU_TANGAGE=5;
+    COMMAND_VISU_POS_AS_TANGAGE=7;
+    COMMAND_ALIGN_ROULIS=8;
+    COMMAND_ALIGN_TANGAGE=9;
+    COMMAND_STORE_OFFS_TANGAGE=11;
+    COMMAND_TEST_ARMATURE_ROULIS=12;
+    COMMAND_TEST_ARMATURE_TANGAGE=13;
+    COMMAND_STOP_VISU=14;
+    COMMAND_VISU_DELTA_XYZ=17;
+    COMMAND_CHANGE_GYRO_FS_SEL=18;
+    COMMAND_STORE_ZERO_YAW=19;
+    COMMAND_TEST_ARMATURE_YAW=20;
+    COMMAND_STORE_LIM_ROULIS=21;
+    COMMAND_ALIGN_YAW=22;
+    COMMAND_STORE_LIM_TANGAGE=23;
+    COMMAND_STORE_OFFS_YAW=24;
+    COMMAND_RAZ_LIM_ROULIS=25;
+    COMMAND_RAZ_LIM_TANGAGE=26;
+    COMMAND_STORE_ZERO_ROULIS=27;
+    COMMAND_STORE_ZERO_TANGAGE=28;
+    COMMAND_VISU_TIMER=29;
+    COMMAND_STORE_MIN_ACC_X=31;
+    COMMAND_STORE_MAX_ACC_X=32;
+    COMMAND_STORE_MIN_ACC_Y=33;
+    COMMAND_STORE_MAX_ACC_Y=34;
+    COMMAND_STORE_MIN_ACC_Z=35;
+    COMMAND_STORE_MAX_ACC_Z=36;
+    COMMAND_STORE_MIN_MAG_X=37;
+    COMMAND_STORE_MAX_MAG_X=38;
+    COMMAND_STORE_MIN_MAG_Y=39;
+    COMMAND_STORE_MAX_MAG_Y=40;
+    COMMAND_STORE_MIN_MAG_Z=41;
+    COMMAND_STORE_MAX_MAG_Z=42;
+    COMMAND_VISU_YAW=43;
+    COMMAND_VISU_POS_AS_YAW=44;
+    COMMAND_VISU_ACC=45;
+    COMMAND_VISU_GYR=46;
+    COMMAND_VISU_MAG=47;
+ }
+    //int value
+    COMMAND_INT_FLAGS=129;  //128+1
+    COMMAND_INT_OFFSET_AS5040=130;  //128+2
+    COMMAND_VOLTS_VALUE=131;  //128+3
+    COMMAND_LARG_BOBINE=132;  //128+4
+    COMMAND_FREQ_BOUCLE=133;  //128+5
+    COMMAND_IDATA1=134;  //128+6
+    COMMAND_KP_I=135;  //128+7
+    COMMAND_KI_I=136;  //128+8
+    COMMAND_I_LIM=137;  //128+9
+    COMMAND_VIT_BOBINE=138;  //128+10
+    //float value
+    OFFSET_FLOAT=16;
+    COMMAND_KP=128+OFFSET_FLOAT;
+    COMMAND_KI=128+OFFSET_FLOAT+2;
+    COMMAND_KD=128+OFFSET_FLOAT+4;
+    COMMAND_PAS=128+OFFSET_FLOAT+6;
+
+    speed=19200;
+    nb_header=3;
+    header: array[0..(nb_header-1)] of integer = ($F0,$F1,$F2);
+    periode=10; //en ms
+    endian=1; //0:little endian(lsb d'abord) , 1:big endian(msb d'abord)
+
+
+
+implementation
+function OPENCOM(COMnr,baud,parity,bits,stop,tout,buffer:integer):integer;
+      stdcall;external 'RS232';
+procedure CLOSECOM(ComNr:integer);stdcall;external 'RS232';
+procedure SENDBYTE(ComNr,dat:integer);stdcall;external 'RS232';
+function READBYTE(ComNr:integer):integer;stdcall;external 'RS232';
+procedure DTR(ComNr,state:integer);stdcall;external 'RS232';
+procedure RTS(ComNr,state:integer);stdcall;external 'RS232';
+procedure TXD(ComNr,state:integer);stdcall;external 'RS232';
+function CTS(ComNr:integer):integer;stdcall;external 'RS232';
+function DSR(ComNr:integer):integer;stdcall;external 'RS232';
+function RI(ComNr:integer):integer;stdcall;external 'RS232';
+function DCD(COMnr: Integer):Integer; stdcall;external 'RS232';
+procedure TIMEINIT();stdcall;external 'RS232';
+function TIMEREAD():real;stdcall;external 'RS232';
+procedure DELAY(DelayTime:real);stdcall;external 'RS232';
+procedure REALTIME();stdcall;external 'RS232';
+procedure NORMALTIME();stdcall;external 'RS232';
+
+{$R *.dfm}
+
+procedure send_int(s_int : integer;s_adr : integer);
+begin
+     sendbyte(port,s_adr);
+     //on envoie les 2 octets de la valeur en int +2 dummies
+     sendbyte(port,s_int shr 8);
+     sendbyte(port,s_int and $FF);
+     sendbyte(port,0);
+     sendbyte(port,0);
+end;
+procedure send_float(s_float : single;s_adr : integer);
+var s_temp : int64;
+begin
+     sendbyte(port,s_adr);
+     //on envoie les 4 octets de la valeur en float
+     ptr_long:=@s_float;
+     s_temp:=ptr_long^;
+     sendbyte(port,(s_temp shr 8)and $FF);
+     sendbyte(port,s_temp and $FF); //word poids faible
+     sendbyte(port,s_temp shr 24);
+     sendbyte(port,(s_temp shr 16)and $FF);//word poids fort
+end;
+
+procedure log_eeprom_file;
+begin
+        writeln(f,eepr.version);
+        writeln(f,eepr.flags);
+        writeln(f,eepr.offset_as5040);
+        writeln(f,eepr.largeur_bobine);
+        writeln(f,eepr.freq_boucle);
+        writeln(f,eepr.Kp_I);
+        writeln(f,eepr.Ki_I);
+        writeln(f,eepr.I_lim);
+        writeln(f,eepr.Kp);
+        writeln(f,eepr.Ki);
+        writeln(f,eepr.Kd);
+        writeln(f,eepr.pas);
+end;
+
+
+procedure TForm1.init_tracks(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    case tabcontrol1.TabIndex of
+        0: begin   //installation
+             Label1.Visible:=true;
+             Label2.Visible:=true;
+             Label3.Visible:=true;
+             Label4.Visible:=true;
+             label1.Caption:='volts_manuel';
+             label2.Caption:='larg_bobine';
+             label3.Caption:='Pas';
+             label4.Caption:='F_loop';
+             tb_k1.Visible:=true;
+             tb_k2.Visible:=true;
+             tb_k3.Visible:=true;
+             tb_k4.Visible:=true;
+             lb_k1.Visible:=true;
+             lb_k2.Visible:=true;
+             lb_k3.Visible:=true;
+             lb_k4.Visible:=true;
+             tb_k1.Position:=eepr.volts_manuel div 3;
+             tb_k2.Position:=eepr.largeur_bobine div 2 ;
+             tb_k3.Position:=round(eepr.pas * 10);
+             tb_k4.Position:=(eepr.freq_boucle div 10)-10;
+             lb_k1.Caption:=inttostr(tb_k1.Position * 3);
+             lb_k2.Caption:=inttostr(tb_k2.Position*2);
+             lb_k3.Caption:=format('%2.1f',[tb_k3.Position/10]);
+             lb_k4.Caption:=inttostr((tb_k4.Position +10)*10)+'Hz';
+
+           end;
+        1: begin   //position
+             max_tk1.Visible:=true;
+             max_tk2.Visible:=true;
+             //max_tk3.Visible:=true;
+//             max_tk4.Visible:=true;
+             Label1.Visible:=true;
+             Label2.Visible:=true;
+             Label3.Visible:=true;
+             Label4.Visible:=true;
+             label1.Caption:='Kp';
+             label2.Caption:='Ki';
+             label3.Caption:='Goto';//'Kd';
+             label4.Caption:='simu_bobine';
+             tb_k1.Visible:=true;
+             tb_k2.Visible:=true;
+             tb_k3.Visible:=true;
+             tb_k4.Visible:=true;
+             lb_k1.Visible:=true;
+             lb_k2.Visible:=true;
+             lb_k3.Visible:=true;
+             lb_k4.Visible:=true;
+
+              //on définit le coefficient tb_kx/valeur en fonction de la valeur actuelle
+             if (eepr.Kp>=1) then  max_tk1.Value:=((round(eepr.Kp)div 10)+1)*10
+              else max_tk1.Value:=1;
+             if (eepr.Ki>=1) then  max_tk2.Value:=((round(eepr.Ki)div 10)+1)*10
+              else max_tk2.Value:=1;
+//             if (eepr.Kd>=1) then  max_tk3.Value:=((round(eepr.Kd)div 10)+1)*10
+  //            else max_tk3.Value:=1;
+             tb_k1.Position:=round(eepr.Kp*100/max_tk1.Value);
+             tb_k2.Position:=round(eepr.Ki*100/max_tk2.Value);
+             tb_k3.Position:=eepr.idata1 div 10;//round(eepr.Kd*100/max_tk3.Value);
+             tb_k4.Position:=simu_vitesse_bobine*5;
+             lb_k1.Caption:=format('%2.1f',[tb_k1.Position*max_tk1.value/100]);
+             lb_k2.Caption:=format('%1.2f',[tb_k2.Position*max_tk2.value/100]);
+             lb_k3.Caption:=inttostr(tb_k3.Position*10);//format('%2.1f',[tb_k3.Position*max_tk3.value/100]);
+             lb_k4.Caption:=inttostr(tb_k4.Position div 5)+'Tr/s';
+             old_max_tkx_value[0]:=max_tk1.Value;
+             old_max_tkx_value[1]:=max_tk2.Value;
+             old_max_tkx_value[2]:=max_tk3.Value;
+    //         old_max_tkx_value[3]:=max_tk4.Value;
+             rg_lin.ItemIndex:=eepr.flags and $01; //b0
+
+           end;
+        2: begin   //courant
+             Label1.Visible:=true;
+             Label2.Visible:=true;
+             Label3.Visible:=true;
+             label1.Caption:='Kp';
+             label2.Caption:='Ki';
+             label3.Caption:='I_lim';
+             tb_k1.Visible:=true;
+             tb_k2.Visible:=true;
+             tb_k3.Visible:=true;
+             lb_k1.Visible:=true;
+             lb_k2.Visible:=true;
+             lb_k3.Visible:=true;
+
+             tb_k1.Position:=eepr.Kp_I;
+             tb_k2.Position:=eepr.Ki_I*10;
+             tb_k3.Position:=(eepr.I_lim -512)div 4;
+             lb_k1.Caption:=inttostr(tb_k1.Position);
+             lb_k2.Caption:=inttostr(tb_k2.Position div 10);
+             lb_k3.Caption:=inttostr(tb_k3.Position*156);  //0à15600mA
+             rg_lin.ItemIndex:=eepr.flags and $01; //b0
+
+
+          end;
+        3: begin   //div2
+           end;
+        4: begin   //div3
+           end;
+     end;
+    modif_controls:=true;
+ end;
+
+end;
+
+procedure TForm1.init_grid(Sender: TObject);
+var i:integer;
+begin
+    Stringgrid1.ColCount:=Datas.nb_data;
+    Stringgrid1.Height:=2*Stringgrid1.DefaultRowHeight;
+    Stringgrid1.Width:=Datas.nb_data*Stringgrid1.DefaultColWidth;
+//    nb_total:=nb_header;
+    for i:=0 to (Datas.nb_data-1) do
+    begin
+  //     nb_total:=nb_total+Datas.data_size[i];
+       Stringgrid1.Cells[i,0]:=Datas.data_text[i];
+    end;
+    flag_efface_curve:=true;
+    cmpt_pixel:=0;
+    stringgrid1.Visible:=true;
+    if connected then timer_start.Enabled:=true;
+
+end;
+
+procedure TForm1.affiche_eeprom(Sender: TObject);
+begin
+        memo1.Lines.Add('version:'+inttostr(eepr.version));
+        memo1.Lines.Add('flags:0x'+inttohex(eepr.flags,2));
+        memo1.Lines.Add('offset_as5040:'+inttostr(eepr.offset_as5040));
+        memo1.Lines.Add('volts_manuel:'+inttostr(eepr.volts_manuel));
+        memo1.Lines.Add('largeur_bobine:'+inttostr(eepr.largeur_bobine));
+        memo1.Lines.Add('freq_boucle:'+inttostr(eepr.freq_boucle));
+        memo1.Lines.Add('Kp_I:'+inttostr(eepr.Kp_I));
+        memo1.Lines.Add('Ki_I:'+inttostr(eepr.Ki_I));
+        memo1.Lines.Add('I_lim:'+inttostr(eepr.I_lim));
+
+
+        memo1.Lines.Add('Kp:'+floattostr(eepr.Kp));
+        memo1.Lines.Add('Ki:'+floattostr(eepr.Ki));
+        memo1.Lines.Add('Kd:'+floattostr(eepr.Kd));
+        memo1.Lines.Add('pas:'+floattostr(eepr.pas));
+   {$IF Defined(DEBUG) }
+       memo1.Lines.Add('*********DEBUG***********');
+   {$IFEND}
+
+end;
+
+function read_uint : integer;
+var temp_int:integer;
+begin
+        temp_int:=readbyte(port);
+        read_uint:= (temp_int shl 8) or readbyte(port);
+end;
+function read_int : integer;
+var temp_int:integer;
+begin
+        temp_int:=read_uint;
+        if temp_int>32767 then read_int:=temp_int-65536
+        else read_int:=temp_int;
+end;
+function read_float : real;
+var temp_dat,temp_ieee:int64;
+begin
+        temp_dat:=readbyte(port);
+        temp_dat:= (temp_dat shl 8) or readbyte(port);
+        temp_ieee:= readbyte(port);
+        temp_ieee:= (temp_ieee shl 8) or readbyte(port);
+        temp_ieee:= (temp_ieee shl 16) or temp_dat;
+        ptr_r:=@temp_ieee;
+        read_float:=ptr_r^;
+
+end;
+procedure read_eeprom;
+
+begin
+{$IF Defined(DEBUG) }
+        eepr.version := 2;
+        eepr.flags := 0;
+        eepr.offset_as5040 := 227;
+        eepr.volts_manuel := 155;
+        eepr.largeur_bobine := 140;
+        eepr.freq_boucle := 100;
+        eepr.Kp_I := 45;
+        eepr.Ki_I := 1;
+        eepr.I_lim := 588;
+        eepr.vit_simu_bobine := 0;
+
+        eepr.Kp := 5.1;
+        eepr.Ki := 0.15;
+        eepr.Kd := 4.7;
+        eepr.pas := 5.0;
+
+{$ELSE}
+        eepr.version := read_int;
+        eepr.flags := read_int;
+        eepr.offset_as5040 := read_int;
+        eepr.volts_manuel := read_int;
+        eepr.largeur_bobine := read_int;
+        eepr.freq_boucle := read_int;
+        eepr.idata1 := read_int;
+        eepr.Kp_I := read_int;
+        eepr.Ki_I := read_int;
+        eepr.I_lim := read_int;
+        eepr.vit_simu_bobine := read_int;
+        eepr.idata6 := read_int;
+        eepr.idata7 := read_int;
+        eepr.idata8 := read_int;
+        eepr.idata9 := read_int;
+        eepr.idata10 := read_int;
+
+
+        eepr.Kp := read_float;
+        eepr.Ki := read_float;
+        eepr.Kd := read_float;
+        eepr.pas := read_float;
+        eepr.fdata1 := read_float;
+        eepr.fdata2 := read_float;
+        eepr.fdata3 := read_float;
+        eepr.fdata4 := read_float;
+        eepr.fdata5 := read_float;
+        eepr.fdata6 := read_float;
+        eepr.fdata7 := read_float;
+        eepr.fdata8 := read_float;
+        eepr.fdata9 := read_float;
+        eepr.fdata10 := read_float;
+
+{$IFEND}
+
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+
+begin
+
+modif_controls:=true;//false pour éviter l'exécution des routines de modification
+                        // des contrôles par écriture de nouvelles propriétés
+
+tab_coche1[1]:=1;
+tab_coche1[2]:=1;
+tab_coche1[3]:=0;
+tab_coche1[4]:=1;
+tab_coche1[5]:=1;
+tab_coche1[6]:=1;
+tab_coche1[7]:=0;
+tab_coche1[8]:=0;
+tab_coche1[9]:=0;
+tab_coche1[10]:=0;
+tab_coche2[1]:=0;
+tab_coche2[2]:=0;
+tab_coche2[3]:=1;
+tab_coche2[4]:=1;
+tab_coche2[5]:=0;
+tab_coche2[6]:=0;
+tab_coche2[7]:=1;
+tab_coche2[8]:=1;
+tab_coche2[9]:=0;
+tab_coche2[10]:=0;
+tab_coche3[1]:=0;
+tab_coche3[2]:=0;
+tab_coche3[3]:=0;
+tab_coche3[4]:=0;
+tab_coche3[5]:=1;
+tab_coche3[6]:=1;
+tab_coche3[7]:=0;
+tab_coche3[8]:=1;
+tab_coche3[9]:=0;
+tab_coche3[10]:=0;
+old_tab:=99;
+ptr_i:=@eepr;
+pdata := @eepr;
+cmpt_pointer:=false;
+old_ordo:=mid;
+state_calibr_acc:=0;
+simu_vitesse_bobine:=0;
+log_running:=false;
+end;
+
+procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+    if (connected) then closecom(port);
+    //connectClick(nil);
+
+end;
+
+procedure TForm1.Timer_loopTimer(Sender: TObject);
+var i,j,k,d,range:integer;
+    temp_ieee:int64;
+    dessine : boolean;
+begin
+repeat
+ d:=readbyte(port);
+ if (d>-1) then
+ begin
+    buffer_rx[cmpt_rx]:=d;
+    inc(cmpt_rx);
+    timeinit;
+ end;
+ if ((cmpt_rx>0)and(cmpt_rx<(nb_header+1))) then //réception en-tête
+ begin
+    if (buffer_rx[cmpt_rx-1]<>header[cmpt_rx-1]) then cmpt_rx:=0;
+ end;
+ if (cmpt_rx=nb_total) then
+ begin
+     k:=nb_header;
+     flag_efface_curve:=true;
+//     cmpt_rx:=0;
+     chaine_fic:='';
+     for i:=0 to (Datas.nb_data-1) do
+     begin
+        temp_dat:=0;
+        for j:=0 to (Datas.data_size[i]-1) do
+        begin
+           if (endian=1) then  temp_dat:=(temp_dat shl 8)+buffer_rx[k]
+           else temp_dat:=temp_dat+(buffer_rx[k] shl (j shl 3));
+           inc(k);
+        end;
+               //mise en forme en fonction du type
+                   //0 pour entier non signé
+                   //1 pour entier signé
+                   //2 pour float ieee
+                   //3 pour float microchip
+                   //4 pour le calcul vitesse bobine=f(periode_bobine)
+                   //5 pour affichage hexa
+                   //6 pour le courant
+                   //7 pour la tension
+                   //8 pour test si selected
+        case Datas.data_type[i] of
+                 0 : begin
+                        Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+                     end;
+                 1 : begin
+                        range:=1 shl (Datas.data_size[i] shl 3);
+                        if (temp_dat>=(range shr 1)) then temp_dat:=temp_dat-range;
+                        Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+    //                    s:=s+inttostr(temp_dat)+',';
+                     end;
+                 2 : begin
+                        ptr_r:=@temp_dat;
+                        reel:=ptr_r^;
+                        Stringgrid1.Cells[i,1]:=floattostr(reel);
+                        temp_dat:=round(reel); //pour les courbes
+                     end;
+                 3 : begin
+                        //modif microchip->ieee
+                        temp_ieee:=temp_dat and $FF000000;
+                        temp_ieee:=temp_ieee shr 1;
+                        if ((temp_dat and $800000)=$800000) then temp_ieee:=temp_ieee or $80000000;
+                        temp_ieee:=temp_ieee or (temp_dat and $7FFFFF);
+                        ptr_r:=@temp_ieee;
+                        reel:=ptr_r^;
+                        Stringgrid1.Cells[i,1]:=floattostr(reel);
+                        temp_dat:=round(reel); //pour les courbes
+                     end;
+                  4 : begin
+                       if temp_dat<>0 then  temp_dat:=6909375 div temp_dat;
+                       //(Tcy/tmr3_prescale)*60
+                       Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+                      end;
+                  5 : begin
+                        Stringgrid1.Cells[i,1]:='0x'+inttohex(temp_dat,2);
+                     end;
+                  6 : begin
+                        // pour le courant
+                       temp_dat:=(temp_dat-512)*39;
+                       Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+                      end;
+                  7 : begin
+                        // pour la tension
+                       temp_dat:=(temp_dat*29) shr 6;//(ad*50)/1024*(10+1.2)/1.2
+                       Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+                      end;
+                  8 : begin
+                        // pos_bobine>10000 si selected
+                       if temp_dat>=10000 then
+                         begin
+                            temp_dat:=temp_dat-10000;
+                            Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+                            cb_select.Caption:='selected';
+                            cb_select.Checked:=true;
+                            if LOG.Caption='wait' then
+                              begin
+                                 LOG.Caption:='LOG';
+                                 LOG.Click;
+                              end;
+                         end
+                        else
+                          begin
+                            Stringgrid1.Cells[i,1]:=inttostr(temp_dat);
+                            cb_select.Caption:='select';
+                            cb_select.Checked:=false;
+                         end
+                      end;
+
+
+        end;
+         chaine_fic:=chaine_fic+ Stringgrid1.Cells[i,1]+',';
+
+                if (Datas.data_curve[i]<>clNone) then // on dessine la courbe correspondante
+                begin
+                  if flag_efface_curve then
+                  begin
+                      canvas.FillRect(rect(cmpt_pixel+11,topf-1,cmpt_pixel+31,bot+1));
+                      flag_efface_curve:=false;
+                  end;
+                  canvas.Pen.Color:=Datas.data_curve[i];
+                  ordo:=round(-temp_dat/Datas.data_scale[i])+Datas.data_zero[i];
+                  old_ordo:=round(-old_data[i]/Datas.data_scale[i])+Datas.data_zero[i];
+                  if ordo<topf then ordo:=topf;
+                  if ordo>bot then ordo:=bot;
+                  if old_ordo<topf then old_ordo:=topf;
+                  if old_ordo>bot then old_ordo:=bot;
+                  dessine:=false;
+                  case i of
+                      0 : if cb1.Checked then dessine:=true;
+                      1 : if cb2.Checked then dessine:=true;
+                      2 : if cb3.Checked then dessine:=true;
+                      3 : if cb4.Checked then dessine:=true;
+                      4 : if cb5.Checked then dessine:=true;
+                      5 : if cb6.Checked then dessine:=true;
+                      6 : if cb7.Checked then dessine:=true;
+                      7 : if cb8.Checked then dessine:=true;
+                      8 : if cb9.Checked then dessine:=true;
+                      9 : if cb10.Checked then dessine:=true;
+                  end;
+                  if dessine then
+                  begin
+                          canvas.MoveTo(cmpt_pixel+10,old_ordo);
+                          canvas.LineTo(cmpt_pixel+11,ordo);
+                  end;
+                  old_data[i]:=temp_dat;
+                  if cmpt_pixel=700 then cmpt_pixel:=0;
+                end;
+     end;
+     inc(cmpt_pixel);
+     if (log_running) then writeln(f,chaine_fic);
+ end;
+until (cmpt_rx=nb_total) or (timeread>periode);//(d=-1);//
+//
+     cmpt_rx:=0;
+end;
+
+procedure TForm1.Timer_startTimer(Sender: TObject);
+var i:integer;
+begin
+ for i:=0 to (Datas.nb_data-1) do
+    begin
+     if  (Datas.data_curve[i]<>clNone) then
+       begin
+            stringgrid1.Canvas.Brush.Color:=Datas.data_curve[i];
+            stringgrid1.Canvas.Rectangle(48+i*Stringgrid1.DefaultColWidth,
+                                          (Stringgrid1.DefaultRowHeight div 2+3),
+                                         78+i*Stringgrid1.DefaultColWidth,
+                                          (Stringgrid1.DefaultRowHeight div 2)+9 );
+       end;
+     end;
+  timer_start.Enabled:=false;
+  canvas.Pen.Color:=clRed;
+ {               canvas.MoveTo(10,mid);
+                canvas.LineTo(700,topf);
+                canvas.MoveTo(10,mid);
+                canvas.LineTo(700,mid);
+                canvas.MoveTo(10,mid);
+                canvas.LineTo(700,bot);
+  }
+end;
+
+procedure TForm1.connectClick(Sender: TObject);
+var d:integer;
+begin
+port:=strtoint(rightstr(cb_port.Text,1));
+
+if connect.Caption='&Connect' then
+  begin
+    opencom(port,speed,0,8,1,100,1000);
+    connect.Caption:='&Raz';
+    cb_port.Enabled:=false;
+    timer_loop.Interval:=periode;
+    cmpt_rx:=0;
+    memo1.Clear;
+    memo1.Lines.Add('Démarrage...');
+    rts(port,1);
+          delay(50);
+          rts(port,0);
+          delay(50);
+          delay(100);
+          repeat d:=readbyte(port); until d=-1;
+    delay(200);
+    sendbyte(port,$47); //"G"
+    delay(300);
+    //on doit avoir reçu le "GO" et les données eeprom
+    d:=readbyte(port);
+    d:=readbyte(port);
+{$IF Defined(DEBUG) }
+       connected:=true;
+       memo1.Lines.Add('Initialisation...');
+       read_eeprom;
+       affiche_eeprom(nil);
+       eepr.volts_manuel:=0; //pour mettre le curseur à 0 , même si <>0
+       eepr.vit_simu_bobine:=0;
+        delay(2500);
+       tabcontrol1.OnChange(nil);//    init_tracks(nil);
+       timer_loop.Enabled:=true;
+
+ {$ELSE}
+    if (d=79) then //"O"
+     begin
+       connected:=true;
+       memo1.Lines.Add('Initialisation...');
+       read_eeprom;
+       affiche_eeprom(nil);
+       eepr.volts_manuel:=0; //pour mettre le curseur à 0 , même si <>0
+       eepr.vit_simu_bobine:=0;
+        delay(2500);
+       tabcontrol1.OnChange(nil);//    init_tracks(nil);
+       timer_loop.Enabled:=true;
+     end
+    else
+     begin
+       connected:=false;
+       memo1.Lines.Add('Problème communication');
+     end;
+ {$IFEND}
+
+   timeinit;
+  end
+else begin
+
+
+          eepr.vit_simu_bobine := 0;
+          simu_vitesse_bobine:=0;
+            memo1.Clear;
+            connect.Caption:='&Connect';
+           cb_port.Enabled:=true;
+           connected:=false;
+           timer_loop.Enabled:=false;
+           stringgrid1.Visible:=false;
+          delay(50);
+          rts(port,1);
+          delay(50);
+          rts(port,0);
+          delay(50);
+          delay(100);
+          repeat d:=readbyte(port); until d=-1;
+          closecom(port);
+          canvas.FillRect(rect(10,0,932,600));
+          tb_k1.Min:=0;//repermet de de revenir à 0
+
+     end;
+
+end;
+
+procedure TForm1.TabControl1Change(Sender: TObject);
+
+
+begin
+             case old_tab of
+                 0: memo_curve1.Click;
+                 1: memo_curve2.Click;
+                 2: memo_curve3.Click;
+              end;
+             cb1.Visible:=true;
+             cb2.Visible:=true;
+             cb3.Visible:=true;
+             cb4.Visible:=true;
+             cb5.Visible:=true;
+             cb6.Visible:=true;
+             cb7.Visible:=true;
+             cb8.Visible:=true;
+             cb9.Visible:=true;
+
+             max_tk1.Visible:=false;
+             max_tk2.Visible:=false;
+             max_tk3.Visible:=false;
+             max_tk4.Visible:=false;
+             btn_inc_consigne.Visible:=false;
+             btn_limite.Visible:=false;
+             Label1.Visible:=false;
+             Label2.Visible:=false;
+             Label3.Visible:=false;
+             Label4.Visible:=false;
+             btn_neutre.Visible:=false;
+             btn_store_offset.Visible:=false;
+             rg_lin.Visible:=false;
+             tb_k1.Visible:=false;
+             tb_k2.Visible:=false;
+             tb_k3.Visible:=false;
+             tb_k4.Visible:=false;
+             lb_k1.Visible:=false;
+             lb_k2.Visible:=false;
+             lb_k3.Visible:=false;
+             lb_k4.Visible:=false;
+             Stringgrid1.DefaultColWidth:=80;
+    canvas.FillRect(rect(10,topf-1,932,bot+1));
+    old_ordo:=mid;
+    case tabcontrol1.TabIndex of
+        0: begin   //installation
+            cmpt_rx:=0;
+            aff_curve1.Click;
+            btn_store_offset.Visible:=true;
+            btn_store_offset.Caption:='store_offset';
+             btn_inc_consigne.Visible:=true;
+             btn_neutre.Visible:=true;
+             btn_limite.Visible:=true;
+             Datas:=data_all;
+             //data_1
+             init_tracks(nil);
+            init_grid(nil);
+            if connected then  sendbyte(port,COMMAND_VISU_LOG);
+            old_tab:=0;
+           end;
+        1: begin   //position
+             cmpt_rx:=0;
+             aff_curve2.Click;
+             rg_lin.Visible:=true;
+             btn_neutre.Visible:=true;
+             btn_limite.Visible:=true;
+             btn_inc_consigne.Visible:=true;
+             btn_store_offset.Visible:=true;
+             btn_store_offset.Caption:='Go To';
+             Datas:=data_all;
+             //data_2
+             init_tracks(nil);
+            init_grid(nil);
+             if connected then  sendbyte(port,COMMAND_VISU_LOG);
+             old_tab:=1;
+           end;
+        2: begin   //courant
+             cmpt_rx:=0;
+             aff_curve3.Click;
+             rg_lin.Visible:=true;
+             btn_neutre.Visible:=true;
+             btn_limite.Visible:=true;
+             btn_inc_consigne.Visible:=true;
+             btn_store_offset.Visible:=true;
+             btn_store_offset.Caption:='Go To';
+             Datas:=data_all;
+             //data_3
+             init_tracks(nil);
+            init_grid(nil);
+             if connected then  sendbyte(port,COMMAND_VISU_LOG);
+             old_tab:=2;
+          end;
+        3: begin   //div2
+           end;
+        4: begin   //div3
+           end;
+     end;
+
+end;
+
+
+procedure TForm1.prog_eepClick(Sender: TObject);
+
+begin
+   if (connected)
+    then
+    begin
+       memo1.Lines.Add('-Enregistrement des données en EEPROM');
+       sendbyte(port,COMMAND_WRITE_EEP);
+    end;
+
+end;
+
+procedure TForm1.tb_k1Change(Sender: TObject);
+//var temp_tx : integer;
+begin
+ if   modif_controls=true then
+ begin
+   modif_controls:=false;
+   case tabcontrol1.TabIndex of
+        0: begin   //installation
+            //si modif , on ne permet pas de revenir à 0 pour éviter le retour
+            // brusque au mode asservi
+            // nécessite un 'raz' pour revenir au mode asservi
+            tb_k1.Min:=1;
+            lb_k1.Caption:=inttostr(tb_k1.Position * 3);
+             if connected then
+             begin
+                sendbyte(port,COMMAND_VOLTS_VALUE);
+                //on envoie les 2 octets de la valeur en int +2 dummies
+                temp_dat:=(tb_k1.Position)*3;
+                eepr.volts_manuel:=temp_dat;
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+             end;
+           end;
+        1: begin   //position
+             lb_k1.Caption:=format('%2.1f',[tb_k1.Position*max_tk1.value/100]);
+
+             if connected then
+             begin
+                reel:=tb_k1.Position*max_tk1.value/100;
+                sendbyte(port,COMMAND_KP);
+                eepr.Kp:=reel;
+                //on envoie les 4 octets de la valeur en float
+                //memo1.Lines.Add(floattostr(reel));
+                ptr_long:=@reel;
+                temp_dat:=ptr_long^;
+                sendbyte(port,(temp_dat shr 8)and $FF);
+                sendbyte(port,temp_dat and $FF); //word poids faible
+                sendbyte(port,temp_dat shr 24);
+                sendbyte(port,(temp_dat shr 16)and $FF);//word poids fort
+             end;
+
+           end;
+        2: begin   //courant
+            lb_k1.Caption:=inttostr(tb_k1.Position);
+             if connected then
+             begin
+                temp_dat:=(tb_k1.Position);
+                sendbyte(port,COMMAND_KP_I);
+                eepr.Kp_I:=temp_dat;
+                //on envoie les 2 octets de la valeur en entier
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+             end;
+          end;
+        3: begin   //div2
+           end;
+        4: begin   //div3
+           end;
+     end;
+   modif_controls:=true;
+ end;
+
+end;
+
+procedure TForm1.tb_k2Change(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    case tabcontrol1.TabIndex of
+        0: begin   //installation
+             lb_k2.Caption:=inttostr(tb_k2.Position*2);
+             if connected then
+             begin
+                sendbyte(port,COMMAND_LARG_BOBINE);
+                //on envoie les 2 octets de la valeur en int +2 dummies
+                temp_dat:=(tb_k2.Position)*2;
+                eepr.largeur_bobine:=temp_dat;
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+             end;
+           end;
+        1: begin   //position
+             lb_k2.Caption:=format('%1.2f',[tb_k2.Position*max_tk2.value/100]);
+             if connected then
+             begin
+                reel:=tb_k2.Position*max_tk2.value/100;
+                sendbyte(port,COMMAND_KI);
+                eepr.Ki:=reel;
+                //on envoie les 4 octets de la valeur en float
+                //memo1.Lines.Add(floattostr(reel));
+                ptr_long:=@reel;
+                temp_dat:=ptr_long^;
+                sendbyte(port,(temp_dat shr 8)and $FF);
+                sendbyte(port,temp_dat and $FF); //word poids faible
+                sendbyte(port,temp_dat shr 24);
+                sendbyte(port,(temp_dat shr 16)and $FF);//word poids fort
+             end;
+           end;
+        2: begin   //courant
+          lb_k2.Caption:=inttostr(tb_k2.Position div 10);
+             if connected then
+             begin
+                temp_dat:=(tb_k2.Position div 10);
+                sendbyte(port,COMMAND_KI_I);
+                eepr.Ki_I:=temp_dat;
+                //on envoie les 2 octets de la valeur en entier
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+             end;
+
+          end;
+        3: begin   //div2
+           end;
+        4: begin   //div3
+           end;
+     end;
+  modif_controls:=true;
+ end;
+end;
+
+procedure TForm1.tb_k3Change(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    case tabcontrol1.TabIndex of
+        0: begin   //installation
+             lb_k3.Caption:=format('%2.1f',[tb_k3.Position/10]);
+
+             if connected then
+             begin
+                reel:=tb_k3.Position/10 ;
+                sendbyte(port,COMMAND_PAS);
+                eepr.pas:=reel;
+                //on envoie les 4 octets de la valeur en float
+                //memo1.Lines.Add(floattostr(reel));
+                ptr_long:=@reel;
+                temp_dat:=ptr_long^;
+                sendbyte(port,(temp_dat shr 8)and $FF);
+                sendbyte(port,temp_dat and $FF); //word poids faible
+                sendbyte(port,temp_dat shr 24);
+                sendbyte(port,(temp_dat shr 16)and $FF);//word poids fort
+             end;
+           end;
+        1: begin   //position
+             lb_k3.Caption:=inttostr((tb_k3.Position)*10);
+             if connected then
+             begin
+                sendbyte(port,COMMAND_IDATA1);
+                //on envoie les 2 octets de la valeur en int +2 dummies
+                temp_dat:=(tb_k3.Position)*10;
+                eepr.idata1:=temp_dat;
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+             end;
+           end;
+        2: begin   //courant
+            lb_k3.Caption:=inttostr(tb_k3.Position * 156);
+             if connected then
+             begin
+                temp_dat:=(tb_k3.Position * 4)+512;
+                sendbyte(port,COMMAND_I_LIM);
+                eepr.I_lim:=temp_dat;
+                //on envoie les 2 octets de la valeur en entier
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+//                memo1.Lines.Add(inttostr(temp_dat));
+             end;
+
+          end;
+        3: begin   //div2
+           end;
+        4: begin   //div3
+           end;
+     end;
+   modif_controls:=true;
+ end;
+end;
+
+procedure TForm1.tb_k4Change(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    case tabcontrol1.TabIndex of
+        0: begin   //installation
+             lb_k4.Caption:=inttostr((tb_k4.Position +10)*10)+'Hz';
+             if connected then
+             begin
+                sendbyte(port,COMMAND_FREQ_BOUCLE);
+                //on envoie les 2 octets de la valeur en int +2 dummies
+                temp_dat:=(tb_k4.Position+10)*10;
+                eepr.freq_boucle:=temp_dat;
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+                sendbyte(port,COMMAND_CHANGE_FREQ_BOUCLE);
+             end;
+
+
+           end;
+        1: begin   //position
+             lb_k4.Caption:=inttostr(tb_k4.Position div 5)+'Tr/s';
+             if connected then
+              begin
+                        sendbyte(port,COMMAND_VIT_BOBINE);
+                        //on envoie les 2 octets de la valeur en int +2 dummies
+                        if cb_select.Checked then
+                          begin
+                          temp_dat:=(tb_k4.Position div 5); //en tr/s
+                          simu_vitesse_bobine:=temp_dat;
+                          if temp_dat<>0 then
+                             temp_dat:=eepr.freq_boucle div (2*temp_dat); //periode changement état broche input capture
+                          end
+                        else
+                          begin
+                          temp_dat:=0;
+                          simu_vitesse_bobine:=0;
+                          end;
+
+                        eepr.vit_simu_bobine:=temp_dat;
+                        sendbyte(port,(temp_dat shr 8));
+                        sendbyte(port,temp_dat and $FF);
+                        sendbyte(port,0);
+                        sendbyte(port,0);
+               end;
+           end;
+        2: begin   //div1
+          end;
+        3: begin   //div2
+           end;
+        4: begin   //div3
+           end;
+     end;
+  modif_controls:=true;
+ end;
+end;
+
+procedure TForm1.btn_store_offsetClick(Sender: TObject);
+begin
+ if connected then
+ begin
+    case tabcontrol1.TabIndex of
+        0: begin   //installation
+              //on empêche le mode asservi en imposant volts_manu<>0
+            tb_k1.Min:=1;
+            tb_k1.Position:=1;
+            lb_k1.Caption:=inttostr(tb_k1.Position * 3);
+            sendbyte(port,COMMAND_VOLTS_VALUE);
+                //on envoie les 2 octets de la valeur en int +2 dummies
+                temp_dat:=(tb_k1.Position)*3;
+                eepr.volts_manuel:=temp_dat;
+                sendbyte(port,(temp_dat shr 8));
+                sendbyte(port,temp_dat and $FF);
+                sendbyte(port,0);
+                sendbyte(port,0);
+              memo1.Lines.Add('-Mémorisation offset as5040');
+              sendbyte(port,COMMAND_STORE_OFFS);
+           end;
+        1: begin   //position
+              memo1.Lines.Add('-Go to : '+inttostr(eepr.idata1));
+              sendbyte(port,COMMAND_GOTO);
+           end;
+        2: begin   //courant
+              memo1.Lines.Add('-Go to : '+inttostr(eepr.idata1));
+              sendbyte(port,COMMAND_GOTO);
+           end;
+    end;
+
+ end;
+
+end;
+
+procedure TForm1.max_tk1Change(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    if max_tk1.Value=0 then max_tk1.Value:=1;
+    if max_tk1.Value=11 then max_tk1.Value:=10;
+    case tabcontrol1.TabIndex of
+      1: begin
+           if max_tk1.Value<eepr.Kp then max_tk1.Value:=old_max_tkx_value[0];
+           tb_k1.Position:=round(eepr.Kp*100/max_tk1.Value);
+         end;
+    end;
+   old_max_tkx_value[0]:=max_tk1.Value;
+   modif_controls:=true;
+ end;
+end;
+
+procedure TForm1.max_tk2Change(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    if max_tk2.Value=0 then max_tk2.Value:=1;
+    if max_tk2.Value=11 then max_tk2.Value:=10;
+    case tabcontrol1.TabIndex of
+      1: begin
+           if max_tk2.Value<eepr.Ki then max_tk2.Value:=old_max_tkx_value[1];
+           tb_k2.Position:=round(eepr.Ki*100/max_tk2.Value);
+         end;
+    end;
+   old_max_tkx_value[1]:=max_tk2.Value;
+   modif_controls:=true;
+  end;
+end;
+
+procedure TForm1.max_tk3Change(Sender: TObject);
+begin
+if   modif_controls=true then
+ begin
+   modif_controls:=false;
+    if max_tk3.Value=0 then max_tk3.Value:=1;
+    if max_tk3.Value=11 then max_tk3.Value:=10;
+    case tabcontrol1.TabIndex of
+      1: begin
+           if max_tk3.Value<eepr.Kd then max_tk3.Value:=old_max_tkx_value[2];
+           tb_k3.Position:=round(eepr.Kd*100/max_tk3.Value);
+         end;
+    end;
+    old_max_tkx_value[2]:=max_tk3.Value;
+   modif_controls:=true;
+  end;
+end;
+
+procedure TForm1.aff_curve1Click(Sender: TObject);
+begin
+  if tab_coche1[1]=1 then cb1.Checked:=true else cb1.Checked:=false;
+  if tab_coche1[2]=1 then cb2.Checked:=true else cb2.Checked:=false;
+  if tab_coche1[3]=1 then cb3.Checked:=true else cb3.Checked:=false;
+  if tab_coche1[4]=1 then cb4.Checked:=true else cb4.Checked:=false;
+  if tab_coche1[5]=1 then cb5.Checked:=true else cb5.Checked:=false;
+  if tab_coche1[6]=1 then cb6.Checked:=true else cb6.Checked:=false;
+  if tab_coche1[7]=1 then cb7.Checked:=true else cb7.Checked:=false;
+  if tab_coche1[8]=1 then cb8.Checked:=true else cb8.Checked:=false;
+  if tab_coche1[9]=1 then cb9.Checked:=true else cb9.Checked:=false;
+  if tab_coche1[10]=1 then cb10.Checked:=true else cb10.Checked:=false;
+
+end;
+
+procedure TForm1.aff_curve2Click(Sender: TObject);
+begin
+  if tab_coche2[1]=1 then cb1.Checked:=true else cb1.Checked:=false;
+  if tab_coche2[2]=1 then cb2.Checked:=true else cb2.Checked:=false;
+  if tab_coche2[3]=1 then cb3.Checked:=true else cb3.Checked:=false;
+  if tab_coche2[4]=1 then cb4.Checked:=true else cb4.Checked:=false;
+  if tab_coche2[5]=1 then cb5.Checked:=true else cb5.Checked:=false;
+  if tab_coche2[6]=1 then cb6.Checked:=true else cb6.Checked:=false;
+  if tab_coche2[7]=1 then cb7.Checked:=true else cb7.Checked:=false;
+  if tab_coche2[8]=1 then cb8.Checked:=true else cb8.Checked:=false;
+  if tab_coche2[9]=1 then cb9.Checked:=true else cb9.Checked:=false;
+  if tab_coche2[10]=1 then cb10.Checked:=true else cb10.Checked:=false;
+end;
+
+procedure TForm1.btn_neutreClick(Sender: TObject);
+begin
+    if connected then  sendbyte(port,COMMAND_NEUTRE);
+end;
+
+procedure TForm1.rg_linClick(Sender: TObject);
+begin
+ if connected then
+ begin
+    sendbyte(port,COMMAND_INT_FLAGS);
+    if rg_lin.ItemIndex=0 then  temp_dat:=(eepr.flags and $FFFE) //b0=0
+    else temp_dat:=(eepr.flags or $0001); //b0=1
+    eepr.flags:=temp_dat;
+    sendbyte(port,(temp_dat shr 8));
+    sendbyte(port,temp_dat and $FF);
+    sendbyte(port,0);
+    sendbyte(port,0);
+ end;
+end;
+
+procedure TForm1.btn_inc_consigneClick(Sender: TObject);
+begin
+    if connected then  sendbyte(port,COMMAND_INC_CONSIGNE);
+end;
+
+procedure TForm1.btn_limiteClick(Sender: TObject);
+begin
+   if connected then  sendbyte(port,COMMAND_LIMITE);
+end;
+
+procedure TForm1.aff_curve3Click(Sender: TObject);
+begin
+  if tab_coche3[1]=1 then cb1.Checked:=true else cb1.Checked:=false;
+  if tab_coche3[2]=1 then cb2.Checked:=true else cb2.Checked:=false;
+  if tab_coche3[3]=1 then cb3.Checked:=true else cb3.Checked:=false;
+  if tab_coche3[4]=1 then cb4.Checked:=true else cb4.Checked:=false;
+  if tab_coche3[5]=1 then cb5.Checked:=true else cb5.Checked:=false;
+  if tab_coche3[6]=1 then cb6.Checked:=true else cb6.Checked:=false;
+  if tab_coche3[7]=1 then cb7.Checked:=true else cb7.Checked:=false;
+  if tab_coche3[8]=1 then cb8.Checked:=true else cb8.Checked:=false;
+  if tab_coche3[9]=1 then cb9.Checked:=true else cb9.Checked:=false;
+  if tab_coche3[10]=1 then cb10.Checked:=true else cb10.Checked:=false;
+
+end;
+
+procedure TForm1.memo_curve1Click(Sender: TObject);
+begin
+if cb1.Checked then tab_coche1[1]:=1 else tab_coche1[1]:=0;
+if cb2.Checked then tab_coche1[2]:=1 else tab_coche1[2]:=0;
+if cb3.Checked then tab_coche1[3]:=1 else tab_coche1[3]:=0;
+if cb4.Checked then tab_coche1[4]:=1 else tab_coche1[4]:=0;
+if cb5.Checked then tab_coche1[5]:=1 else tab_coche1[5]:=0;
+if cb6.Checked then tab_coche1[6]:=1 else tab_coche1[6]:=0;
+if cb7.Checked then tab_coche1[7]:=1 else tab_coche1[7]:=0;
+if cb8.Checked then tab_coche1[8]:=1 else tab_coche1[8]:=0;
+if cb9.Checked then tab_coche1[9]:=1 else tab_coche1[9]:=0;
+if cb10.Checked then tab_coche1[10]:=1 else tab_coche1[10]:=0;
+
+end;
+
+procedure TForm1.memo_curve2Click(Sender: TObject);
+begin
+if cb1.Checked then tab_coche2[1]:=1 else tab_coche2[1]:=0;
+if cb2.Checked then tab_coche2[2]:=1 else tab_coche2[2]:=0;
+if cb3.Checked then tab_coche2[3]:=1 else tab_coche2[3]:=0;
+if cb4.Checked then tab_coche2[4]:=1 else tab_coche2[4]:=0;
+if cb5.Checked then tab_coche2[5]:=1 else tab_coche2[5]:=0;
+if cb6.Checked then tab_coche2[6]:=1 else tab_coche2[6]:=0;
+if cb7.Checked then tab_coche2[7]:=1 else tab_coche2[7]:=0;
+if cb8.Checked then tab_coche2[8]:=1 else tab_coche2[8]:=0;
+if cb9.Checked then tab_coche2[9]:=1 else tab_coche2[9]:=0;
+if cb10.Checked then tab_coche2[10]:=1 else tab_coche2[10]:=0;
+
+end;
+
+procedure TForm1.memo_curve3Click(Sender: TObject);
+begin
+if cb1.Checked then tab_coche3[1]:=1 else tab_coche3[1]:=0;
+if cb2.Checked then tab_coche3[2]:=1 else tab_coche3[2]:=0;
+if cb3.Checked then tab_coche3[3]:=1 else tab_coche3[3]:=0;
+if cb4.Checked then tab_coche3[4]:=1 else tab_coche3[4]:=0;
+if cb5.Checked then tab_coche3[5]:=1 else tab_coche3[5]:=0;
+if cb6.Checked then tab_coche3[6]:=1 else tab_coche3[6]:=0;
+if cb7.Checked then tab_coche3[7]:=1 else tab_coche3[7]:=0;
+if cb8.Checked then tab_coche3[8]:=1 else tab_coche3[8]:=0;
+if cb9.Checked then tab_coche3[9]:=1 else tab_coche3[9]:=0;
+if cb10.Checked then tab_coche3[10]:=1 else tab_coche3[10]:=0;
+
+end;
+
+procedure TForm1.LOGClick(Sender: TObject);
+var i:integer;
+    fic: string;
+begin
+if  connected then
+ begin
+    if LOG.Caption='LOG' then
+    begin
+     if cb_select.Checked then
+        begin
+          i:=1;
+          repeat
+            fic:=extractfilepath(Application.ExeName)+'log_'+inttostr(i)+'.tct';
+            i:=i+1;
+          until  (fileexists(fic)=false);
+          assignfile(f,fic);
+          rewrite(f);
+          memo1.Lines.Add('-enregistrement dans : ');
+          memo1.Lines.Add(fic);
+
+          LOG.Caption:='STOP_LOG';
+          log_running:=true;
+
+        end
+        else
+        begin
+           LOG.Caption:='wait';
+
+        end;
+    end
+    else
+    begin
+         LOG.Caption:='LOG';
+          memo1.Lines.Add('-fin enregistrement log');
+          log_eeprom_file;
+          closefile(f);
+          log_running:=false;
+
+    end;
+
+ end;
+end;
+
+procedure TForm1.btn_selClick(Sender: TObject);
+begin
+       if cb_select.Checked then
+          begin
+              cb_select.Caption:='select';
+             if connected then  sendbyte(port,COMMAND_STOP);
+          end
+        else
+          begin
+            cb_select.Caption:='selected';
+             if connected then  sendbyte(port,COMMAND_RUN);
+             if LOG.Caption='wait' then
+               begin
+                LOG.Caption:='LOG';
+                LOG.Click;
+               end;
+          end;
+end;
+
+end.
+

@@ -1,0 +1,126 @@
+MPLINK 4.49, Linker
+Linker Map File - Created Wed Apr 30 17:55:25 2014
+
+                                 Section Info
+                  Section       Type    Address   Location Size(Bytes)
+                ---------  ---------  ---------  ---------  ---------
+                   .org_0       code   0x000000    program   0x000000
+                   .org_1       code   0x000000    program   0x000002
+                   .org_2       code   0x000004    program   0x00020c
+   .config_2007_REGUL_1.O       code   0x002007    program   0x000002
+
+
+
+                              Program Memory Usage 
+                               Start         End      
+                           ---------   ---------      
+                            0x000000    0x000000      
+                            0x000004    0x000109      
+                            0x002007    0x002007      
+            264 out of 1030 program addresses used, program memory utilization is 25%
+
+
+
+                              Symbols - Sorted by Name
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                    Add16   0x0000a1    program     static D:\dataPIC\treuil\regul_1.asm
+                    Sub16   0x0000a8    program     static D:\dataPIC\treuil\regul_1.asm
+             T1.5msboucle   0x0000d5    program     static D:\dataPIC\treuil\regul_1.asm
+             T100msboucle   0x0000bd    program     static D:\dataPIC\treuil\regul_1.asm
+             T100usboucle   0x0000dc    program     static D:\dataPIC\treuil\regul_1.asm
+              T10msboucle   0x0000cf    program     static D:\dataPIC\treuil\regul_1.asm
+              T15msboucle   0x0000c9    program     static D:\dataPIC\treuil\regul_1.asm
+                T1sboucle   0x0000b1    program     static D:\dataPIC\treuil\regul_1.asm
+             T200msboucle   0x0000b7    program     static D:\dataPIC\treuil\regul_1.asm
+             T500msboucle   0x0000c3    program     static D:\dataPIC\treuil\regul_1.asm
+              T50usboucle   0x0000e3    program     static D:\dataPIC\treuil\regul_1.asm
+             T520usboucle   0x0000ea    program     static D:\dataPIC\treuil\regul_1.asm
+            T5343usboucle   0x0000fd    program     static D:\dataPIC\treuil\regul_1.asm
+            T7313usboucle   0x000106    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait1.5ms   0x0000d3    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait100ms   0x0000bb    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait100us   0x0000d9    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait10ms   0x0000cd    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait13us   0x0000f2    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait15ms   0x0000c7    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait15us   0x0000ef    program     static D:\dataPIC\treuil\regul_1.asm
+                   Wait1s   0x0000af    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait200ms   0x0000b5    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait500ms   0x0000c1    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait50us   0x0000df    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait520us   0x0000e6    program     static D:\dataPIC\treuil\regul_1.asm
+               Wait5343us   0x0000f6    program     static D:\dataPIC\treuil\regul_1.asm
+                  Wait5us   0x0000ed    program     static D:\dataPIC\treuil\regul_1.asm
+               Wait7313us   0x000101    program     static D:\dataPIC\treuil\regul_1.asm
+              fin_int_gp2   0x00005b    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig1   0x00001e    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig2   0x00002c    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig3   0x000030    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig4   0x000059    program     static D:\dataPIC\treuil\regul_1.asm
+                     init   0x000061    program     static D:\dataPIC\treuil\regul_1.asm
+                    init1   0x000073    program     static D:\dataPIC\treuil\regul_1.asm
+                  int_gp2   0x000011    program     static D:\dataPIC\treuil\regul_1.asm
+                 int_tmr1   0x00005e    program     static D:\dataPIC\treuil\regul_1.asm
+                       l1   0x000089    program     static D:\dataPIC\treuil\regul_1.asm
+                       l2   0x000090    program     static D:\dataPIC\treuil\regul_1.asm
+                       l3   0x00009a    program     static D:\dataPIC\treuil\regul_1.asm
+                     loop   0x000085    program     static D:\dataPIC\treuil\regul_1.asm
+                  ok_1800   0x000098    program     static D:\dataPIC\treuil\regul_1.asm
+               restorereg   0x00000c    program     static D:\dataPIC\treuil\regul_1.asm
+                       s1   0x000081    program     static D:\dataPIC\treuil\regul_1.asm
+                    start   0x00007f    program     static D:\dataPIC\treuil\regul_1.asm
+
+
+
+                              Symbols - Sorted by Address
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+               restorereg   0x00000c    program     static D:\dataPIC\treuil\regul_1.asm
+                  int_gp2   0x000011    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig1   0x00001e    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig2   0x00002c    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig3   0x000030    program     static D:\dataPIC\treuil\regul_1.asm
+                      ig4   0x000059    program     static D:\dataPIC\treuil\regul_1.asm
+              fin_int_gp2   0x00005b    program     static D:\dataPIC\treuil\regul_1.asm
+                 int_tmr1   0x00005e    program     static D:\dataPIC\treuil\regul_1.asm
+                     init   0x000061    program     static D:\dataPIC\treuil\regul_1.asm
+                    init1   0x000073    program     static D:\dataPIC\treuil\regul_1.asm
+                    start   0x00007f    program     static D:\dataPIC\treuil\regul_1.asm
+                       s1   0x000081    program     static D:\dataPIC\treuil\regul_1.asm
+                     loop   0x000085    program     static D:\dataPIC\treuil\regul_1.asm
+                       l1   0x000089    program     static D:\dataPIC\treuil\regul_1.asm
+                       l2   0x000090    program     static D:\dataPIC\treuil\regul_1.asm
+                  ok_1800   0x000098    program     static D:\dataPIC\treuil\regul_1.asm
+                       l3   0x00009a    program     static D:\dataPIC\treuil\regul_1.asm
+                    Add16   0x0000a1    program     static D:\dataPIC\treuil\regul_1.asm
+                    Sub16   0x0000a8    program     static D:\dataPIC\treuil\regul_1.asm
+                   Wait1s   0x0000af    program     static D:\dataPIC\treuil\regul_1.asm
+                T1sboucle   0x0000b1    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait200ms   0x0000b5    program     static D:\dataPIC\treuil\regul_1.asm
+             T200msboucle   0x0000b7    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait100ms   0x0000bb    program     static D:\dataPIC\treuil\regul_1.asm
+             T100msboucle   0x0000bd    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait500ms   0x0000c1    program     static D:\dataPIC\treuil\regul_1.asm
+             T500msboucle   0x0000c3    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait15ms   0x0000c7    program     static D:\dataPIC\treuil\regul_1.asm
+              T15msboucle   0x0000c9    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait10ms   0x0000cd    program     static D:\dataPIC\treuil\regul_1.asm
+              T10msboucle   0x0000cf    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait1.5ms   0x0000d3    program     static D:\dataPIC\treuil\regul_1.asm
+             T1.5msboucle   0x0000d5    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait100us   0x0000d9    program     static D:\dataPIC\treuil\regul_1.asm
+             T100usboucle   0x0000dc    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait50us   0x0000df    program     static D:\dataPIC\treuil\regul_1.asm
+              T50usboucle   0x0000e3    program     static D:\dataPIC\treuil\regul_1.asm
+                Wait520us   0x0000e6    program     static D:\dataPIC\treuil\regul_1.asm
+             T520usboucle   0x0000ea    program     static D:\dataPIC\treuil\regul_1.asm
+                  Wait5us   0x0000ed    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait15us   0x0000ef    program     static D:\dataPIC\treuil\regul_1.asm
+                 Wait13us   0x0000f2    program     static D:\dataPIC\treuil\regul_1.asm
+               Wait5343us   0x0000f6    program     static D:\dataPIC\treuil\regul_1.asm
+            T5343usboucle   0x0000fd    program     static D:\dataPIC\treuil\regul_1.asm
+               Wait7313us   0x000101    program     static D:\dataPIC\treuil\regul_1.asm
+            T7313usboucle   0x000106    program     static D:\dataPIC\treuil\regul_1.asm
+
+
